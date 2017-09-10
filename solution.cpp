@@ -1,23 +1,43 @@
 #include <iostream>
 #include <string>
 #include <array>
+#include <vector>
+#include <sstream>
 
 using namespace std;
 
 typedef array<int, 5> validOption;
+struct OptionPair{
+  char optionChar;
+  int value;
+};
+
+typedef vector<OptionPair> possiblePairs;
 
 class Solution
 {
 private:
   bool alreadyExists(validOption someOption);
-  validOption getFiveNumberOptions();
   int _currentNumberOptions;
-  array< validOption, 252> possibleOptions; //check the main function below to see why there is 252 options  
-public:
-  
-  //This function returns a unique list of five numbers between 0 - 9 for all 252 times we call it
+  array< validOption, 1000000> _possibleOptions; //check the main function below to see why there is 100 000 options  
+public:  
+  //This function returns a unique list of five numbers between 0 - 9 for all 100 000 times we call it, making sure they have not be recorded before
   validOption getFiveUniqueNumberOptions(int currentNumberOptions);
+
+  //This function returns a unique list of five numbers between 0 - 9 which are not in <option>
   validOption getFiveNumberOptionsDifference(validOption option, string earthMatchingOption,string optionString);
+  
+  //This function returns a unique list of five numbers between 0 - 9  
+  validOption getFiveNumberOptions();  
+
+  //This function returns a list of five numbers between 0 - 9 allowing repeats
+  validOption getFiveNumberOptionsWithReapeats();  
+
+  //record
+  void recordOption(validOption option)
+  {
+    _possibleOptions[_currentNumberOptions] = option;
+  };
 };
 
 
@@ -48,7 +68,6 @@ string Helpers::getStringDiff(string first, string second)
       temp +=eachChar;
     }
   }
-
   return temp;
 }
 
@@ -90,8 +109,7 @@ validOption Solution::getFiveUniqueNumberOptions(int currentNumberOptions)
   bool isRepeat = false;
   do
   {
-    someOption = getFiveNumberOptions();    
-    //we do not generate a new set of numbers if this is a unique set
+    someOption = getFiveNumberOptionsWithReapeats();    
     isRepeat = alreadyExists(someOption);
   }  
   while(isRepeat);
@@ -101,22 +119,21 @@ validOption Solution::getFiveUniqueNumberOptions(int currentNumberOptions)
 
 bool Solution::alreadyExists(validOption someOption)
 {
-  bool similarOptions = false;  
-
-  for(int i = 0; i < _currentNumberOptions;i++)
+  bool similar;
+  for(int i = 0; i < _currentNumberOptions; i++)
   {
-    similarOptions = true;
-    for(int j = 0; j < 5; j++)
+    similar = true;
+    for(int j = 0; j < someOption.size(); j++)
     {
-      if(someOption[j] != possibleOptions[i][j])
+      if(someOption[j] != _possibleOptions[i][j])
       {
-        //break out as soon as you realise some indices are not similar
-        similarOptions = false;
+        similar = false;
         break;
       }
     }
+    if(similar) return true;
   }
-  return similarOptions;
+  return similar;
 }
 
 validOption Solution::getFiveNumberOptions()
@@ -151,6 +168,18 @@ validOption Solution::getFiveNumberOptions()
   return option;
 }
 
+validOption Solution::getFiveNumberOptionsWithReapeats()
+{
+  validOption option;
+  //randomly fill these five numbers
+            
+  for(int i = 0; i < 5; i++)
+  {
+    option[i] = rand() % 10;
+  }
+return option;
+}
+
 validOption Solution::getFiveNumberOptionsDifference(validOption option, string earthMatchingOption,string optionString)
 {
   validOption returnOption;
@@ -176,6 +205,68 @@ validOption Solution::getFiveNumberOptionsDifference(validOption option, string 
   return returnOption;
 }
 
+void printOptionPairs(possiblePairs pairs)
+{
+  for(OptionPair each: pairs)
+  {
+    cout << each.optionChar << " : " << each.value << ", ";
+  }
+  cout << endl;
+}
+
+int getNumberOccurancesOfChar(char seekedChar, string testString)
+{
+  int count = 0;
+  for(int i = 0; i < testString.size(); i++)
+  {
+    if(testString[i] == seekedChar) count++;
+  }
+  return count;
+}
+
+void getOptionsForTheOtherChars(int earthSum, int wordsSum, string blobMinusEarthChars, string missingChars, possiblePairs options)
+{  
+  int missingCharSize = missingChars.size();
+  if(missingCharSize == 0)
+  {
+    if(earthSum == wordsSum)
+    {
+      printOptionPairs(options);
+      cout << "Earth Sum: " << earthSum << "   Other words Sum: " << wordsSum << "\n \n" << endl;
+      return; //stopping point for the recursion. Finally we have a solution
+    }
+  }
+
+  for(int index = 0; index < missingCharSize; index++)
+  {    
+    OptionPair temp;
+    temp.optionChar = missingChars[index];
+    int occurances = getNumberOccurancesOfChar(temp.optionChar, blobMinusEarthChars);
+    
+    for(int option = 0; option < 10; option++)
+    {    
+      wordsSum += (option * occurances);      
+      if(wordsSum > earthSum)
+      {
+        break;
+      }
+
+      temp.value = option;
+      options.push_back(temp);
+
+      //some crappy code to convert c++ chars to strings, I'm sure this can be done better
+      stringstream ss;
+      ss << temp.optionChar;
+      string s;
+      ss >> s;
+      //end of crappy code
+
+      missingChars = Helpers::getStringDiff(missingChars, s);
+      return getOptionsForTheOtherChars(earthSum, wordsSum, blobMinusEarthChars, missingChars, options);
+    }
+  }
+}
+
 int getNonNegetiveSum(validOption option)
 {
   int sum = 0;
@@ -196,6 +287,22 @@ void printValidOption(validOption option)
   cout << endl;
 }
 
+possiblePairs ConvertToPairs(string fiveLetterWord, validOption option)
+{
+  possiblePairs temp;
+
+  for(int i = 0; i < option.size(); i++)
+  {
+    OptionPair optionPair;    
+
+    optionPair.optionChar = fiveLetterWord[i];
+    optionPair.value = option[i];
+
+    temp.push_back(optionPair);
+  }
+  return temp;
+}
+
 array<int, 10> mergeOptions(validOption one, validOption two)
 {
   array<int, 10> temp;
@@ -211,85 +318,70 @@ array<int, 10> mergeOptions(validOption one, validOption two)
 
 int main()
 {
-      //just as a note* const optimizes this variable during compile time, telling the c++ compiler that this 
-      //variable will not change during the runtime of the program.
-      const string NORTH = "NORTH";
-      const string EAST = "EAST";
-      const string SOUTH = "SOUTH";
-      const string WEST = "WEST";
-      
-      const string EARTH = "EARTH";
+  //just as a note* const optimizes this variable during compile time, telling the c++ compiler that this 
+  //variable will not change during the runtime of the program.
+  const string NORTH = "NORTH";
+  const string EAST = "EAST";
+  const string SOUTH = "SOUTH";
+  const string WEST = "WEST";
+  
+  const string EARTH = "EARTH";
 
-      array<string, 4> words = {NORTH, EAST, SOUTH, WEST};
+  array<string, 4> words = {NORTH, EAST, SOUTH, WEST};
 
-      //Lets start by putting all this strings into on string
-      string blob = NORTH + EAST + SOUTH + WEST;
+  //Lets start by putting all these strings into one string
+  string blob = NORTH + EAST + SOUTH + WEST;
 
-      //Here we get a string with unique characters
+  //Here we get a string with unique characters
+  string unique = Helpers::getUniqueCharacters(blob);
+  string charsNotInEarth = Helpers::getStringDiff(unique, EARTH);
 
-      string unique = Helpers::getUniqueCharacters(blob);
-      string charsNotInEarth = Helpers::getStringDiff(unique, EARTH);
+  Solution* solution = new Solution();
+  validOption earthOption;      
+  validOption tempOption;
+  bool currentEarthAnOption;
+  int wordsSum;
+  int earthOptionSum;      
+  // Picking five numbers with repeatition
+  // there are 10^5 = 100 000 ways we can pick 5 numbers from 10 numbers with repeatition
+  for(int instance = 0; instance < 100000; instance++)
+  {
+    earthOption = solution -> getFiveUniqueNumberOptions(instance); //option VALUES for the FIVE LETTER WORD EARTH
+    solution -> recordOption(earthOption);
+    wordsSum = 0;
+    currentEarthAnOption = true;
+    earthOptionSum = getNonNegetiveSum(earthOption);
 
-      //assuming no repeatitions, there are N c R (N combination R) ways to pick r unique objects from N objects
-      //There are 10 combination 5 ways to choose individual characters of "earth" from 10 values.
-      // Possible Options = 10 C 5 = 252
-      //again this is not a very big number so we can run an exhaustive agorithm but be a little clever to break out early
-
-      Solution* solution = new Solution();
-      validOption earthOption;      
-      validOption tempOption;
-      bool currentEarthAnOption;
-      int wordsSum;
-      int earthOptionSum;      
-
-      for(int instance = 0; instance < 252; instance++)
+    for(int wordIndex = 0; wordIndex < words.size() ; wordIndex++)
+    {
+      tempOption.fill(-1);                 
+      for(int i = 0; i < EARTH.size(); i++)
       {
-        earthOption = solution -> getFiveUniqueNumberOptions(instance); //option VALUES for the FIVE LETTER WORD EARTH
-        
-        earthOptionSum = 0;
-        currentEarthAnOption = true;
-        wordsSum = 0;
-
-        for(int i = 0; i < 5; i++)
+        for(int charIndex = 0; charIndex < words[wordIndex].size();charIndex++)
         {
-          //calculate the earth sum
-          earthOptionSum += earthOption[i];
-        }
-        for(int wordIndex = 0; wordIndex < words.size() && currentEarthAnOption; wordIndex++)
-        {          
-          tempOption.fill(-1);              
-          
-          for(int i = 0; i < EARTH.size(); i++)
-          {
-            for(int charIndex = 0; charIndex < words[wordIndex].size();charIndex++)
+          if(EARTH[i] == words[wordIndex][charIndex])
             {
-              if(EARTH[i] == words[wordIndex][charIndex])
-               {
-                 //assign the values on the other words where the characters are the same
-                 tempOption[charIndex] = earthOption[i];
-               }
+              //assign the values on the other words where the characters are the same
+              tempOption[charIndex] = earthOption[i];
             }
-          }
-          
-          int tempOptionSum = getNonNegetiveSum(tempOption);
-          wordsSum +=tempOptionSum;
-          if(wordsSum > earthOptionSum)
-          {
-            currentEarthAnOption = false;
-            break;
-          }
-
         }
-        validOption somePossibleOption = solution -> getFiveNumberOptionsDifference(earthOption, EARTH, charsNotInEarth);
-
-        cout << "EARTH option!" << endl;
-        printValidOption(earthOption);
-
-        cout << "Complimentary option for "<< charsNotInEarth << endl;
-        printValidOption(somePossibleOption);
-
-        array<int, 10> possibleOptionFinalSolution = mergeOptions(earthOption, somePossibleOption);
       }
-
-      return 0;
+      
+      int tempOptionSum = getNonNegetiveSum(tempOption);
+      wordsSum += tempOptionSum;
+      if(wordsSum > earthOptionSum)
+      {
+        currentEarthAnOption = false;
+        break;
+      }
+    }
+    if(currentEarthAnOption)
+    {
+      printValidOption(earthOption);
+      string blobMinusEarthChars = Helpers::getStringDiff(blob, EARTH);
+      possiblePairs earthPairs = ConvertToPairs(EARTH, earthOption);
+      getOptionsForTheOtherChars(earthOptionSum, wordsSum,  blobMinusEarthChars, charsNotInEarth, earthPairs);
+    }
+}
+return 0;
 }
