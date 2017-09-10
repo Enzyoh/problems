@@ -7,3 +7,10 @@
 > ``> g++ solution.cpp -o finalsolution``
 
 > ``> ./finalsolution``
+
+for Trivial solution run
+
+
+> ``> g++ TrivialSolution.cpp -o trivial``
+
+> ``> ./trivial``
